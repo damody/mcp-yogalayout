@@ -1,4 +1,4 @@
-use super::{BoundingBox, LayoutElement, SlideSize};
+use super::{LayoutElement, SlideSize};
 use serde::{Deserialize, Serialize};
 
 /// 審查報告
@@ -136,7 +136,7 @@ pub enum FallbackStrategy {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::layout::ElementKind;
+    use crate::layout::{BoundingBox, ElementKind};
 
     #[test]
     fn test_detect_overflow() {
