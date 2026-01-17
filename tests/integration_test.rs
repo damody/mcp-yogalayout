@@ -6,8 +6,7 @@ use mcp_yogalayout::theme::Theme;
 use std::path::PathBuf;
 
 fn load_test_theme() -> Theme {
-    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("workspace/themes/default.json");
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("workspace/themes/default.json");
     Theme::load(&path).expect("Failed to load test theme")
 }
 
@@ -35,7 +34,10 @@ fn test_full_pipeline_short_content() {
     assert!(output.elements.iter().any(|e| e.id == "subtitle"));
 
     let report = review_layout(&elements, &output.slide);
-    assert!(report.overflow_elements.is_empty(), "Short content should not overflow");
+    assert!(
+        report.overflow_elements.is_empty(),
+        "Short content should not overflow"
+    );
 }
 
 #[test]

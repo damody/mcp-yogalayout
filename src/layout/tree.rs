@@ -1,8 +1,8 @@
-use super::{BoundingBox, LayoutElement, ElementKind};
+use super::{BoundingBox, ElementKind, LayoutElement};
 use crate::ast::*;
 use crate::theme::Theme;
 use taffy::prelude::*;
-use taffy::{TaffyTree, NodeId};
+use taffy::{NodeId, TaffyTree};
 
 /// 節點上下文：儲存量測所需資訊
 #[derive(Debug, Clone)]
@@ -31,14 +31,9 @@ pub enum NodeContext {
         alt: String,
     },
     /// Callout
-    Callout {
-        id: String,
-        text: String,
-    },
+    Callout { id: String, text: String },
     /// 容器節點（無需量測）
-    Container {
-        id: String,
-    },
+    Container { id: String },
 }
 
 impl NodeContext {
@@ -68,7 +63,7 @@ impl LayoutTree {
         // 使用一個臨時的 root，稍後會被設定
         Self {
             tree,
-            root: NodeId::from(taffy::NodeId::new(0)),
+            root: taffy::NodeId::new(0),
             theme,
         }
     }
@@ -81,9 +76,8 @@ impl LayoutTree {
         children: &[NodeId],
     ) -> Result<NodeId, taffy::TaffyError> {
         let node = self.tree.new_with_children(style, children)?;
-        self.tree.set_node_context(node, Some(NodeContext::Container {
-            id: id.to_string(),
-        }))?;
+        self.tree
+            .set_node_context(node, Some(NodeContext::Container { id: id.to_string() }))?;
         Ok(node)
     }
 
@@ -97,7 +91,10 @@ impl LayoutTree {
     }
 
     /// 計算佈局
-    pub fn compute_layout(&mut self, available_size: Size<AvailableSpace>) -> Result<(), taffy::TaffyError> {
+    pub fn compute_layout(
+        &mut self,
+        available_size: Size<AvailableSpace>,
+    ) -> Result<(), taffy::TaffyError> {
         let theme = self.theme.clone();
         self.tree.compute_layout_with_measure(
             self.root,
@@ -232,8 +229,15 @@ fn measure_node(
     theme: &Theme,
 ) -> Size<f32> {
     // 如果已知尺寸，直接返回
-    if let Size { width: Some(w), height: Some(h) } = known_dimensions {
-        return Size { width: w, height: h };
+    if let Size {
+        width: Some(w),
+        height: Some(h),
+    } = known_dimensions
+    {
+        return Size {
+            width: w,
+            height: h,
+        };
     }
 
     let context = match node_context {
@@ -250,25 +254,40 @@ fn measure_node(
     match context {
         NodeContext::Text { role, content, .. } => {
             let measured = super::measure::measure_text(content, role, max_width, theme);
-            Size { width: measured.width, height: measured.height }
+            Size {
+                width: measured.width,
+                height: measured.height,
+            }
         }
         NodeContext::Bullets { bullets, .. } => {
             let indent_pt = theme.get_spacing("lg");
             let measured = super::measure::measure_bullets(bullets, max_width, theme, indent_pt);
-            Size { width: measured.width, height: measured.height }
+            Size {
+                width: measured.width,
+                height: measured.height,
+            }
         }
         NodeContext::Table { table, .. } => {
             let measured = super::measure::measure_table(table, max_width, theme);
-            Size { width: measured.width, height: measured.height }
+            Size {
+                width: measured.width,
+                height: measured.height,
+            }
         }
         NodeContext::Figure { ratio, .. } => {
             let min_box = &theme.policy.min_image_box_pt;
             let measured = super::measure::measure_figure(ratio, max_width, min_box);
-            Size { width: measured.width, height: measured.height }
+            Size {
+                width: measured.width,
+                height: measured.height,
+            }
         }
         NodeContext::Callout { text, .. } => {
             let measured = super::measure::measure_text(text, "caption", max_width, theme);
-            Size { width: measured.width, height: measured.height }
+            Size {
+                width: measured.width,
+                height: measured.height,
+            }
         }
         NodeContext::Container { .. } => Size::ZERO,
     }
@@ -282,29 +301,43 @@ mod tests {
 
     fn create_test_theme() -> Theme {
         let mut typography = HashMap::new();
-        typography.insert("body".to_string(), Typography {
-            family: "Inter".to_string(),
-            size_pt: 14.0,
-            line_height: 1.35,
-            weight: 400,
-        });
-        typography.insert("title".to_string(), Typography {
-            family: "Inter".to_string(),
-            size_pt: 34.0,
-            line_height: 1.10,
-            weight: 700,
-        });
-        typography.insert("caption".to_string(), Typography {
-            family: "Inter".to_string(),
-            size_pt: 12.0,
-            line_height: 1.30,
-            weight: 400,
-        });
+        typography.insert(
+            "body".to_string(),
+            Typography {
+                family: "Inter".to_string(),
+                size_pt: 14.0,
+                line_height: 1.35,
+                weight: 400,
+            },
+        );
+        typography.insert(
+            "title".to_string(),
+            Typography {
+                family: "Inter".to_string(),
+                size_pt: 34.0,
+                line_height: 1.10,
+                weight: 700,
+            },
+        );
+        typography.insert(
+            "caption".to_string(),
+            Typography {
+                family: "Inter".to_string(),
+                size_pt: 12.0,
+                line_height: 1.30,
+                weight: 400,
+            },
+        );
 
         Theme {
             typography,
             spacing_pt: SpacingScale {
-                xs: 4.0, sm: 8.0, md: 12.0, lg: 16.0, xl: 24.0, xxl: 32.0,
+                xs: 4.0,
+                sm: 8.0,
+                md: 12.0,
+                lg: 16.0,
+                xl: 24.0,
+                xxl: 32.0,
             },
             policy: LayoutPolicy {
                 page_padding: "xl".to_string(),
@@ -324,22 +357,30 @@ mod tests {
         let theme = create_test_theme();
         let mut tree = LayoutTree::new(theme);
 
-        let leaf = tree.new_leaf(
-            Style::default(),
-            NodeContext::Text {
-                id: "test".to_string(),
-                role: "body".to_string(),
-                content: "Hello".to_string(),
-            },
-        ).unwrap();
+        let leaf = tree
+            .new_leaf(
+                Style::default(),
+                NodeContext::Text {
+                    id: "test".to_string(),
+                    role: "body".to_string(),
+                    content: "Hello".to_string(),
+                },
+            )
+            .unwrap();
 
-        let root = tree.new_container("root", Style {
-            size: Size {
-                width: Dimension::length(960.0),
-                height: Dimension::length(540.0),
-            },
-            ..Default::default()
-        }, &[leaf]).unwrap();
+        let root = tree
+            .new_container(
+                "root",
+                Style {
+                    size: Size {
+                        width: Dimension::length(960.0),
+                        height: Dimension::length(540.0),
+                    },
+                    ..Default::default()
+                },
+                &[leaf],
+            )
+            .unwrap();
 
         tree.root = root;
         tree.compute_layout(Size::MAX_CONTENT).unwrap();
@@ -354,42 +395,58 @@ mod tests {
         let theme = create_test_theme();
         let mut tree = LayoutTree::new(theme);
 
-        let text1 = tree.new_leaf(
-            Style::default(),
-            NodeContext::Text {
-                id: "text1".to_string(),
-                role: "body".to_string(),
-                content: "First".to_string(),
-            },
-        ).unwrap();
+        let text1 = tree
+            .new_leaf(
+                Style::default(),
+                NodeContext::Text {
+                    id: "text1".to_string(),
+                    role: "body".to_string(),
+                    content: "First".to_string(),
+                },
+            )
+            .unwrap();
 
-        let text2 = tree.new_leaf(
-            Style::default(),
-            NodeContext::Text {
-                id: "text2".to_string(),
-                role: "body".to_string(),
-                content: "Second".to_string(),
-            },
-        ).unwrap();
+        let text2 = tree
+            .new_leaf(
+                Style::default(),
+                NodeContext::Text {
+                    id: "text2".to_string(),
+                    role: "body".to_string(),
+                    content: "Second".to_string(),
+                },
+            )
+            .unwrap();
 
-        let container = tree.new_container("container", Style {
-            flex_direction: FlexDirection::Column,
-            ..Default::default()
-        }, &[text1, text2]).unwrap();
+        let container = tree
+            .new_container(
+                "container",
+                Style {
+                    flex_direction: FlexDirection::Column,
+                    ..Default::default()
+                },
+                &[text1, text2],
+            )
+            .unwrap();
 
-        let root = tree.new_container("root", Style {
-            size: Size {
-                width: Dimension::length(960.0),
-                height: Dimension::length(540.0),
-            },
-            padding: Rect {
-                left: LengthPercentage::length(24.0),
-                right: LengthPercentage::length(24.0),
-                top: LengthPercentage::length(24.0),
-                bottom: LengthPercentage::length(24.0),
-            },
-            ..Default::default()
-        }, &[container]).unwrap();
+        let root = tree
+            .new_container(
+                "root",
+                Style {
+                    size: Size {
+                        width: Dimension::length(960.0),
+                        height: Dimension::length(540.0),
+                    },
+                    padding: Rect {
+                        left: LengthPercentage::length(24.0),
+                        right: LengthPercentage::length(24.0),
+                        top: LengthPercentage::length(24.0),
+                        bottom: LengthPercentage::length(24.0),
+                    },
+                    ..Default::default()
+                },
+                &[container],
+            )
+            .unwrap();
 
         tree.root = root;
         tree.compute_layout(Size::MAX_CONTENT).unwrap();

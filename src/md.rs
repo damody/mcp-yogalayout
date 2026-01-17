@@ -26,7 +26,9 @@ pub fn parse_markdown(content: &str) -> Result<Slide, ParseError> {
     let mut i = 0;
     while i < events.len() {
         match &events[i] {
-            Event::Start(Tag::Heading { level, .. }) if *level == pulldown_cmark::HeadingLevel::H1 => {
+            Event::Start(Tag::Heading { level, .. })
+                if *level == pulldown_cmark::HeadingLevel::H1 =>
+            {
                 // 提取 H1 標題文字
                 i += 1;
                 let mut text = String::new();
@@ -42,7 +44,9 @@ pub fn parse_markdown(content: &str) -> Result<Slide, ParseError> {
                 state.title = Some(text.trim().to_string());
             }
 
-            Event::Start(Tag::Heading { level, .. }) if *level == pulldown_cmark::HeadingLevel::H2 => {
+            Event::Start(Tag::Heading { level, .. })
+                if *level == pulldown_cmark::HeadingLevel::H2 =>
+            {
                 // 結束當前 section，開始新 section
                 state.finish_current_section();
                 i += 1;
@@ -81,7 +85,10 @@ pub fn parse_markdown(content: &str) -> Result<Slide, ParseError> {
                 let text = text.trim().to_string();
 
                 // 第一個 blockquote 且 title 存在且 subtitle 未設定 → subtitle
-                if state.title.is_some() && state.subtitle.is_none() && state.current_section.is_none() {
+                if state.title.is_some()
+                    && state.subtitle.is_none()
+                    && state.current_section.is_none()
+                {
                     state.subtitle = Some(text);
                 } else {
                     // 否則視為 Callout
@@ -98,12 +105,15 @@ pub fn parse_markdown(content: &str) -> Result<Slide, ParseError> {
             }
 
             Event::Start(Tag::Table(alignments)) => {
-                let aligns: Vec<Alignment> = alignments.iter().map(|a| match a {
-                    pulldown_cmark::Alignment::Left => Alignment::Left,
-                    pulldown_cmark::Alignment::Center => Alignment::Center,
-                    pulldown_cmark::Alignment::Right => Alignment::Right,
-                    pulldown_cmark::Alignment::None => Alignment::Left,
-                }).collect();
+                let aligns: Vec<Alignment> = alignments
+                    .iter()
+                    .map(|a| match a {
+                        pulldown_cmark::Alignment::Left => Alignment::Left,
+                        pulldown_cmark::Alignment::Center => Alignment::Center,
+                        pulldown_cmark::Alignment::Right => Alignment::Right,
+                        pulldown_cmark::Alignment::None => Alignment::Left,
+                    })
+                    .collect();
                 let (table, new_i) = parse_table(&events, i, aligns);
                 i = new_i;
                 state.add_block(Block::Table(table));
@@ -210,7 +220,13 @@ fn parse_list_item(events: &[Event], start: usize) -> (BulletItem, usize) {
         i += 1;
     }
 
-    (BulletItem { text: text.trim().to_string(), children }, i)
+    (
+        BulletItem {
+            text: text.trim().to_string(),
+            children,
+        },
+        i,
+    )
 }
 
 fn parse_table(events: &[Event], start: usize, alignments: Vec<Alignment>) -> (Table, usize) {
@@ -258,7 +274,14 @@ fn parse_table(events: &[Event], start: usize, alignments: Vec<Alignment>) -> (T
         i += 1;
     }
 
-    (Table { header, rows, alignments }, i)
+    (
+        Table {
+            header,
+            rows,
+            alignments,
+        },
+        i,
+    )
 }
 
 fn parse_figure_tag(html: &str) -> Option<Figure> {
@@ -283,7 +306,12 @@ fn parse_figure_tag(html: &str) -> Option<Figure> {
         .unwrap_or_default();
     let alt = extract_attr("alt")?;
 
-    Some(Figure { id, ratio, kind, alt })
+    Some(Figure {
+        id,
+        ratio,
+        kind,
+        alt,
+    })
 }
 
 /// 從檔案讀取並解析 Markdown
@@ -429,7 +457,10 @@ mod tests {
 
         let slide = parse_markdown(md).unwrap();
         assert_eq!(slide.title, "Anti-Lag POC");
-        assert_eq!(slide.subtitle, Some("目標：降低輸入延遲，並保留穩定幀率".to_string()));
+        assert_eq!(
+            slide.subtitle,
+            Some("目標：降低輸入延遲，並保留穩定幀率".to_string())
+        );
         assert_eq!(slide.blocks.len(), 3); // 3 sections
     }
 }

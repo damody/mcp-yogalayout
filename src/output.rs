@@ -37,18 +37,24 @@ mod tests {
         let path = dir.path().join("layout.json");
 
         let output = LayoutOutput {
-            slide: SlideSize { w_pt: 960.0, h_pt: 540.0 },
-            elements: vec![
-                LayoutElement {
-                    id: "title".to_string(),
-                    kind: ElementKind::Text,
-                    role: "title".to_string(),
-                    bounding_box: BoundingBox { x: 24.0, y: 24.0, w: 912.0, h: 44.0 },
-                    ratio: None,
-                    alt: None,
-                    source_ref: None,
+            slide: SlideSize {
+                w_pt: 960.0,
+                h_pt: 540.0,
+            },
+            elements: vec![LayoutElement {
+                id: "title".to_string(),
+                kind: ElementKind::Text,
+                role: "title".to_string(),
+                bounding_box: BoundingBox {
+                    x: 24.0,
+                    y: 24.0,
+                    w: 912.0,
+                    h: 44.0,
                 },
-            ],
+                ratio: None,
+                alt: None,
+                source_ref: None,
+            }],
         };
 
         write_layout_json(&output, &path).unwrap();

@@ -1,16 +1,13 @@
-use crate::ast::{AspectRatio, Bullets, BulletItem, Table};
-use crate::theme::{Theme, Typography};
 use super::MeasuredSize;
+use crate::ast::{AspectRatio, BulletItem, Bullets, Table};
+use crate::theme::{Theme, Typography};
 
 /// 量測文字高度（使用簡化估算）
-pub fn measure_text(
-    text: &str,
-    role: &str,
-    max_width_pt: f32,
-    theme: &Theme,
-) -> MeasuredSize {
+pub fn measure_text(text: &str, role: &str, max_width_pt: f32, theme: &Theme) -> MeasuredSize {
     let typography = theme.get_typography(role).unwrap_or_else(|| {
-        theme.get_typography("body").expect("Theme must have 'body' typography")
+        theme
+            .get_typography("body")
+            .expect("Theme must have 'body' typography")
     });
 
     let line_height_pt = typography.size_pt * typography.line_height;
@@ -41,7 +38,7 @@ fn estimate_lines(text: &str, chars_per_line: usize) -> usize {
         if char_count == 0 {
             total_lines += 1;
         } else {
-            total_lines += (char_count + chars_per_line - 1) / chars_per_line;
+            total_lines += char_count.div_ceil(chars_per_line);
         }
     }
 
@@ -55,7 +52,9 @@ pub fn measure_bullets(
     theme: &Theme,
     indent_pt: f32,
 ) -> MeasuredSize {
-    let typography = theme.get_typography("body").expect("Theme must have 'body' typography");
+    let typography = theme
+        .get_typography("body")
+        .expect("Theme must have 'body' typography");
     let line_height_pt = typography.size_pt * typography.line_height;
     let item_spacing = theme.get_spacing("sm");
 
@@ -113,12 +112,10 @@ pub fn measure_bullets(
 }
 
 /// 量測表格高度
-pub fn measure_table(
-    table: &Table,
-    max_width_pt: f32,
-    theme: &Theme,
-) -> MeasuredSize {
-    let typography = theme.get_typography("body").expect("Theme must have 'body' typography");
+pub fn measure_table(table: &Table, max_width_pt: f32, theme: &Theme) -> MeasuredSize {
+    let typography = theme
+        .get_typography("body")
+        .expect("Theme must have 'body' typography");
     let line_height_pt = typography.size_pt * typography.line_height;
     let cell_padding = theme.get_spacing("sm");
     let row_padding = theme.get_spacing("xs");
@@ -130,7 +127,9 @@ pub fn measure_table(
     let chars_per_cell = (col_width / avg_char_width).floor().max(1.0) as usize;
 
     // 計算 header 高度
-    let header_max_lines = table.header.iter()
+    let header_max_lines = table
+        .header
+        .iter()
         .map(|cell| estimate_lines(cell, chars_per_cell))
         .max()
         .unwrap_or(1);
@@ -139,7 +138,8 @@ pub fn measure_table(
     // 計算 rows 高度
     let mut rows_height = 0.0;
     for row in &table.rows {
-        let row_max_lines = row.iter()
+        let row_max_lines = row
+            .iter()
             .map(|cell| estimate_lines(cell, chars_per_cell))
             .max()
             .unwrap_or(1);
@@ -172,23 +172,34 @@ mod tests {
 
     fn create_test_theme() -> Theme {
         let mut typography = HashMap::new();
-        typography.insert("body".to_string(), Typography {
-            family: "Inter".to_string(),
-            size_pt: 14.0,
-            line_height: 1.35,
-            weight: 400,
-        });
-        typography.insert("title".to_string(), Typography {
-            family: "Inter".to_string(),
-            size_pt: 34.0,
-            line_height: 1.10,
-            weight: 700,
-        });
+        typography.insert(
+            "body".to_string(),
+            Typography {
+                family: "Inter".to_string(),
+                size_pt: 14.0,
+                line_height: 1.35,
+                weight: 400,
+            },
+        );
+        typography.insert(
+            "title".to_string(),
+            Typography {
+                family: "Inter".to_string(),
+                size_pt: 34.0,
+                line_height: 1.10,
+                weight: 700,
+            },
+        );
 
         Theme {
             typography,
             spacing_pt: SpacingScale {
-                xs: 4.0, sm: 8.0, md: 12.0, lg: 16.0, xl: 24.0, xxl: 32.0,
+                xs: 4.0,
+                sm: 8.0,
+                md: 12.0,
+                lg: 16.0,
+                xl: 24.0,
+                xxl: 32.0,
             },
             policy: LayoutPolicy {
                 page_padding: "xl".to_string(),
@@ -235,8 +246,14 @@ mod tests {
         let theme = create_test_theme();
         let bullets = Bullets {
             items: vec![
-                BulletItem { text: "Item 1".to_string(), children: vec![] },
-                BulletItem { text: "Item 2".to_string(), children: vec![] },
+                BulletItem {
+                    text: "Item 1".to_string(),
+                    children: vec![],
+                },
+                BulletItem {
+                    text: "Item 2".to_string(),
+                    children: vec![],
+                },
             ],
         };
         let result = measure_bullets(&bullets, 400.0, &theme, 16.0);
@@ -249,9 +266,7 @@ mod tests {
         let theme = create_test_theme();
         let table = Table {
             header: vec!["A".to_string(), "B".to_string()],
-            rows: vec![
-                vec!["1".to_string(), "2".to_string()],
-            ],
+            rows: vec![vec!["1".to_string(), "2".to_string()]],
             alignments: vec![],
         };
         let result = measure_table(&table, 400.0, &theme);

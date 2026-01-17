@@ -41,8 +41,7 @@ pub fn auto_select_template(slide: &Slide, theme: &Theme) -> Template {
 
     let policy = &theme.policy.two_col_when;
 
-    if policy.has_image_or_diagram && has_figure
-        && policy.has_bullets_or_table && has_text_content
+    if policy.has_image_or_diagram && has_figure && policy.has_bullets_or_table && has_text_content
     {
         Template::TwoColumn
     } else {
@@ -414,53 +413,45 @@ fn build_block_node(
             )
         }
 
-        Block::Bullets(bullets) => {
-            tree.new_leaf(
-                Style::default(),
-                NodeContext::Bullets {
-                    id: format!("bullets:{}", index),
-                    bullets: bullets.clone(),
-                },
-            )
-        }
+        Block::Bullets(bullets) => tree.new_leaf(
+            Style::default(),
+            NodeContext::Bullets {
+                id: format!("bullets:{}", index),
+                bullets: bullets.clone(),
+            },
+        ),
 
-        Block::Table(table) => {
-            tree.new_leaf(
-                Style::default(),
-                NodeContext::Table {
-                    id: format!("table:{}", index),
-                    table: table.clone(),
-                },
-            )
-        }
+        Block::Table(table) => tree.new_leaf(
+            Style::default(),
+            NodeContext::Table {
+                id: format!("table:{}", index),
+                table: table.clone(),
+            },
+        ),
 
-        Block::Figure(fig) => {
-            tree.new_leaf(
-                Style::default(),
-                NodeContext::Figure {
-                    id: format!("fig:{}", fig.id),
-                    ratio: fig.ratio,
-                    kind: fig.kind,
-                    alt: fig.alt.clone(),
-                },
-            )
-        }
+        Block::Figure(fig) => tree.new_leaf(
+            Style::default(),
+            NodeContext::Figure {
+                id: format!("fig:{}", fig.id),
+                ratio: fig.ratio,
+                kind: fig.kind,
+                alt: fig.alt.clone(),
+            },
+        ),
 
-        Block::Callout(callout) => {
-            tree.new_leaf(
-                Style {
-                    margin: Rect {
-                        top: LengthPercentageAuto::length(theme.get_spacing("md")),
-                        ..Rect::zero()
-                    },
-                    ..Default::default()
+        Block::Callout(callout) => tree.new_leaf(
+            Style {
+                margin: Rect {
+                    top: LengthPercentageAuto::length(theme.get_spacing("md")),
+                    ..Rect::zero()
                 },
-                NodeContext::Callout {
-                    id: format!("callout:{}", index),
-                    text: callout.text.clone(),
-                },
-            )
-        }
+                ..Default::default()
+            },
+            NodeContext::Callout {
+                id: format!("callout:{}", index),
+                text: callout.text.clone(),
+            },
+        ),
     }
 }
 
@@ -472,41 +463,61 @@ mod tests {
 
     fn create_test_theme() -> Theme {
         let mut typography = HashMap::new();
-        typography.insert("body".to_string(), Typography {
-            family: "Inter".to_string(),
-            size_pt: 14.0,
-            line_height: 1.35,
-            weight: 400,
-        });
-        typography.insert("title".to_string(), Typography {
-            family: "Inter".to_string(),
-            size_pt: 34.0,
-            line_height: 1.10,
-            weight: 700,
-        });
-        typography.insert("subtitle".to_string(), Typography {
-            family: "Inter".to_string(),
-            size_pt: 18.0,
-            line_height: 1.20,
-            weight: 500,
-        });
-        typography.insert("h2".to_string(), Typography {
-            family: "Inter".to_string(),
-            size_pt: 20.0,
-            line_height: 1.20,
-            weight: 700,
-        });
-        typography.insert("caption".to_string(), Typography {
-            family: "Inter".to_string(),
-            size_pt: 12.0,
-            line_height: 1.30,
-            weight: 400,
-        });
+        typography.insert(
+            "body".to_string(),
+            Typography {
+                family: "Inter".to_string(),
+                size_pt: 14.0,
+                line_height: 1.35,
+                weight: 400,
+            },
+        );
+        typography.insert(
+            "title".to_string(),
+            Typography {
+                family: "Inter".to_string(),
+                size_pt: 34.0,
+                line_height: 1.10,
+                weight: 700,
+            },
+        );
+        typography.insert(
+            "subtitle".to_string(),
+            Typography {
+                family: "Inter".to_string(),
+                size_pt: 18.0,
+                line_height: 1.20,
+                weight: 500,
+            },
+        );
+        typography.insert(
+            "h2".to_string(),
+            Typography {
+                family: "Inter".to_string(),
+                size_pt: 20.0,
+                line_height: 1.20,
+                weight: 700,
+            },
+        );
+        typography.insert(
+            "caption".to_string(),
+            Typography {
+                family: "Inter".to_string(),
+                size_pt: 12.0,
+                line_height: 1.30,
+                weight: 400,
+            },
+        );
 
         Theme {
             typography,
             spacing_pt: SpacingScale {
-                xs: 4.0, sm: 8.0, md: 12.0, lg: 16.0, xl: 24.0, xxl: 32.0,
+                xs: 4.0,
+                sm: 8.0,
+                md: 12.0,
+                lg: 16.0,
+                xl: 24.0,
+                xxl: 32.0,
             },
             policy: LayoutPolicy {
                 page_padding: "xl".to_string(),
@@ -527,14 +538,12 @@ mod tests {
         let slide = Slide {
             title: "Test".to_string(),
             subtitle: None,
-            blocks: vec![
-                Block::Bullets(Bullets {
-                    items: vec![BulletItem {
-                        text: "Item".to_string(),
-                        children: vec![],
-                    }],
-                }),
-            ],
+            blocks: vec![Block::Bullets(Bullets {
+                items: vec![BulletItem {
+                    text: "Item".to_string(),
+                    children: vec![],
+                }],
+            })],
         };
         assert_eq!(auto_select_template(&slide, &theme), Template::SingleColumn);
     }
@@ -545,25 +554,23 @@ mod tests {
         let slide = Slide {
             title: "Test".to_string(),
             subtitle: None,
-            blocks: vec![
-                Block::Section(Section {
-                    heading: "Section".to_string(),
-                    children: vec![
-                        Block::Bullets(Bullets {
-                            items: vec![BulletItem {
-                                text: "Item".to_string(),
-                                children: vec![],
-                            }],
-                        }),
-                        Block::Figure(Figure {
-                            id: "fig1".to_string(),
-                            ratio: AspectRatio::new(16, 9),
-                            kind: FigureKind::Diagram,
-                            alt: "Test".to_string(),
-                        }),
-                    ],
-                }),
-            ],
+            blocks: vec![Block::Section(Section {
+                heading: "Section".to_string(),
+                children: vec![
+                    Block::Bullets(Bullets {
+                        items: vec![BulletItem {
+                            text: "Item".to_string(),
+                            children: vec![],
+                        }],
+                    }),
+                    Block::Figure(Figure {
+                        id: "fig1".to_string(),
+                        ratio: AspectRatio::new(16, 9),
+                        kind: FigureKind::Diagram,
+                        alt: "Test".to_string(),
+                    }),
+                ],
+            })],
         };
         assert_eq!(auto_select_template(&slide, &theme), Template::TwoColumn);
     }
@@ -597,14 +604,12 @@ mod tests {
             blocks: vec![
                 Block::Section(Section {
                     heading: "Content".to_string(),
-                    children: vec![
-                        Block::Bullets(Bullets {
-                            items: vec![BulletItem {
-                                text: "Item".to_string(),
-                                children: vec![],
-                            }],
-                        }),
-                    ],
+                    children: vec![Block::Bullets(Bullets {
+                        items: vec![BulletItem {
+                            text: "Item".to_string(),
+                            children: vec![],
+                        }],
+                    })],
                 }),
                 Block::Figure(Figure {
                     id: "fig1".to_string(),

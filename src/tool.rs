@@ -5,7 +5,10 @@ use crate::md::{parse_markdown_file, ParseError};
 use crate::output::{write_layout_json, write_report_json, OutputError};
 use crate::paths::{ensure_dir_exists, ensure_file_exists, resolve_workspace_path, PathError};
 use crate::theme::{Theme, ThemeError};
-use rmcp::model::{CallToolRequestParam, Content, Implementation, ListToolsResult, ProtocolVersion, ServerCapabilities};
+use rmcp::model::{
+    CallToolRequestParam, Content, Implementation, ListToolsResult, ProtocolVersion,
+    ServerCapabilities,
+};
 use rmcp::service::RequestContext;
 use rmcp::{ErrorData as McpError, RoleServer, ServerHandler};
 use schemars::JsonSchema;
@@ -41,9 +44,7 @@ impl ServerHandler for LayoutService {
     fn get_info(&self) -> rmcp::model::InitializeResult {
         rmcp::model::InitializeResult {
             protocol_version: ProtocolVersion::LATEST,
-            capabilities: ServerCapabilities::builder()
-                .enable_tools()
-                .build(),
+            capabilities: ServerCapabilities::builder().enable_tools().build(),
             server_info: Implementation {
                 name: "mcp-yogalayout".to_string(),
                 version: env!("CARGO_PKG_VERSION").to_string(),
@@ -105,14 +106,12 @@ impl ServerHandler for LayoutService {
                             structured_content: None,
                         })
                     }
-                    Err(e) => {
-                        Ok(rmcp::model::CallToolResult {
-                            content: vec![Content::text(e.to_string())],
-                            is_error: Some(true),
-                            meta: None,
-                            structured_content: None,
-                        })
-                    }
+                    Err(e) => Ok(rmcp::model::CallToolResult {
+                        content: vec![Content::text(e.to_string())],
+                        is_error: Some(true),
+                        meta: None,
+                        structured_content: None,
+                    }),
                 }
             }
             _ => Err(McpError::invalid_request("Unknown tool", None)),
@@ -160,7 +159,8 @@ impl LayoutService {
         let mut fallbacks = vec![];
         let mut current_template = template.unwrap_or_else(|| auto_select_template(&slide, &theme));
 
-        let (mut output, mut elements) = compute_layout(&slide, &theme, Some(current_template), density)?;
+        let (mut output, mut elements) =
+            compute_layout(&slide, &theme, Some(current_template), density)?;
         let mut report = review_layout(&elements, &output.slide);
 
         // 嘗試降級
@@ -195,7 +195,8 @@ impl LayoutService {
         // 如果仍有問題，加入警告
         if !report.overflow_elements.is_empty() {
             report.warnings.push(
-                "Content still overflows after all fallbacks. Consider reducing text content.".to_string()
+                "Content still overflows after all fallbacks. Consider reducing text content."
+                    .to_string(),
             );
         }
 
@@ -241,9 +242,15 @@ pub struct SlideSettings {
     pub unit: String,
 }
 
-fn default_aspect() -> String { "16:9".to_string() }
-fn default_orientation() -> String { "landscape".to_string() }
-fn default_unit() -> String { "pt".to_string() }
+fn default_aspect() -> String {
+    "16:9".to_string()
+}
+fn default_orientation() -> String {
+    "landscape".to_string()
+}
+fn default_unit() -> String {
+    "pt".to_string()
+}
 
 impl Default for SlideSettings {
     fn default() -> Self {
@@ -267,8 +274,12 @@ pub struct LayoutOptions {
     pub debug_dump: bool,
 }
 
-fn default_template() -> String { "auto".to_string() }
-fn default_density() -> String { "comfortable".to_string() }
+fn default_template() -> String {
+    "auto".to_string()
+}
+fn default_density() -> String {
+    "comfortable".to_string()
+}
 
 impl Default for LayoutOptions {
     fn default() -> Self {

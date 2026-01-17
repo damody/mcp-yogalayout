@@ -62,41 +62,61 @@ mod tests {
 
     fn create_test_theme() -> Theme {
         let mut typography = HashMap::new();
-        typography.insert("body".to_string(), Typography {
-            family: "Inter".to_string(),
-            size_pt: 14.0,
-            line_height: 1.35,
-            weight: 400,
-        });
-        typography.insert("title".to_string(), Typography {
-            family: "Inter".to_string(),
-            size_pt: 34.0,
-            line_height: 1.10,
-            weight: 700,
-        });
-        typography.insert("subtitle".to_string(), Typography {
-            family: "Inter".to_string(),
-            size_pt: 18.0,
-            line_height: 1.20,
-            weight: 500,
-        });
-        typography.insert("h2".to_string(), Typography {
-            family: "Inter".to_string(),
-            size_pt: 20.0,
-            line_height: 1.20,
-            weight: 700,
-        });
-        typography.insert("caption".to_string(), Typography {
-            family: "Inter".to_string(),
-            size_pt: 12.0,
-            line_height: 1.30,
-            weight: 400,
-        });
+        typography.insert(
+            "body".to_string(),
+            Typography {
+                family: "Inter".to_string(),
+                size_pt: 14.0,
+                line_height: 1.35,
+                weight: 400,
+            },
+        );
+        typography.insert(
+            "title".to_string(),
+            Typography {
+                family: "Inter".to_string(),
+                size_pt: 34.0,
+                line_height: 1.10,
+                weight: 700,
+            },
+        );
+        typography.insert(
+            "subtitle".to_string(),
+            Typography {
+                family: "Inter".to_string(),
+                size_pt: 18.0,
+                line_height: 1.20,
+                weight: 500,
+            },
+        );
+        typography.insert(
+            "h2".to_string(),
+            Typography {
+                family: "Inter".to_string(),
+                size_pt: 20.0,
+                line_height: 1.20,
+                weight: 700,
+            },
+        );
+        typography.insert(
+            "caption".to_string(),
+            Typography {
+                family: "Inter".to_string(),
+                size_pt: 12.0,
+                line_height: 1.30,
+                weight: 400,
+            },
+        );
 
         Theme {
             typography,
             spacing_pt: SpacingScale {
-                xs: 4.0, sm: 8.0, md: 12.0, lg: 16.0, xl: 24.0, xxl: 32.0,
+                xs: 4.0,
+                sm: 8.0,
+                md: 12.0,
+                lg: 16.0,
+                xl: 24.0,
+                xxl: 32.0,
             },
             policy: LayoutPolicy {
                 page_padding: "xl".to_string(),

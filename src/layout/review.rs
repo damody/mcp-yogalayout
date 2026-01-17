@@ -55,10 +55,7 @@ impl Default for Report {
 }
 
 /// 審查佈局結果
-pub fn review_layout(
-    elements: &[LayoutElement],
-    slide: &SlideSize,
-) -> Report {
+pub fn review_layout(elements: &[LayoutElement], slide: &SlideSize) -> Report {
     let mut report = Report::new();
 
     for element in elements {
@@ -94,7 +91,10 @@ pub fn review_layout(
     }
 
     // 檢查元素數量
-    let figure_count = elements.iter().filter(|e| matches!(e.kind, super::ElementKind::Figure)).count();
+    let figure_count = elements
+        .iter()
+        .filter(|e| matches!(e.kind, super::ElementKind::Figure))
+        .count();
     if figure_count > 4 {
         report.warnings.push(format!(
             "Too many figures ({}). Consider reducing to 4 or fewer.",
@@ -112,7 +112,9 @@ pub fn should_fallback(report: &Report) -> Option<FallbackStrategy> {
     }
 
     // 如果有嚴重 overflow，建議降級
-    let max_overflow_y = report.overflow_elements.iter()
+    let max_overflow_y = report
+        .overflow_elements
+        .iter()
         .map(|o| o.overflow_y)
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap_or(0.0);
@@ -140,18 +142,24 @@ mod tests {
 
     #[test]
     fn test_detect_overflow() {
-        let slide = SlideSize { w_pt: 960.0, h_pt: 540.0 };
-        let elements = vec![
-            LayoutElement {
-                id: "test".to_string(),
-                kind: ElementKind::Text,
-                role: "body".to_string(),
-                bounding_box: BoundingBox { x: 900.0, y: 500.0, w: 100.0, h: 100.0 },
-                ratio: None,
-                alt: None,
-                source_ref: None,
+        let slide = SlideSize {
+            w_pt: 960.0,
+            h_pt: 540.0,
+        };
+        let elements = vec![LayoutElement {
+            id: "test".to_string(),
+            kind: ElementKind::Text,
+            role: "body".to_string(),
+            bounding_box: BoundingBox {
+                x: 900.0,
+                y: 500.0,
+                w: 100.0,
+                h: 100.0,
             },
-        ];
+            ratio: None,
+            alt: None,
+            source_ref: None,
+        }];
 
         let report = review_layout(&elements, &slide);
         assert_eq!(report.overflow_elements.len(), 1);
@@ -161,18 +169,24 @@ mod tests {
 
     #[test]
     fn test_no_overflow() {
-        let slide = SlideSize { w_pt: 960.0, h_pt: 540.0 };
-        let elements = vec![
-            LayoutElement {
-                id: "test".to_string(),
-                kind: ElementKind::Text,
-                role: "body".to_string(),
-                bounding_box: BoundingBox { x: 24.0, y: 24.0, w: 200.0, h: 50.0 },
-                ratio: None,
-                alt: None,
-                source_ref: None,
+        let slide = SlideSize {
+            w_pt: 960.0,
+            h_pt: 540.0,
+        };
+        let elements = vec![LayoutElement {
+            id: "test".to_string(),
+            kind: ElementKind::Text,
+            role: "body".to_string(),
+            bounding_box: BoundingBox {
+                x: 24.0,
+                y: 24.0,
+                w: 200.0,
+                h: 50.0,
             },
-        ];
+            ratio: None,
+            alt: None,
+            source_ref: None,
+        }];
 
         let report = review_layout(&elements, &slide);
         assert!(report.overflow_elements.is_empty());

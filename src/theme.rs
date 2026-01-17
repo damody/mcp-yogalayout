@@ -51,10 +51,8 @@ pub struct TwoColCondition {
 
 impl Theme {
     pub fn load(path: &Path) -> Result<Self, ThemeError> {
-        let content = std::fs::read_to_string(path)
-            .map_err(|e| ThemeError::Io(e.to_string()))?;
-        serde_json::from_str(&content)
-            .map_err(|e| ThemeError::Parse(e.to_string()))
+        let content = std::fs::read_to_string(path).map_err(|e| ThemeError::Io(e.to_string()))?;
+        serde_json::from_str(&content).map_err(|e| ThemeError::Parse(e.to_string()))
     }
 
     pub fn get_typography(&self, role: &str) -> Option<&Typography> {

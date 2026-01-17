@@ -156,14 +156,12 @@ mod tests {
         let slide = Slide {
             title: "Test".to_string(),
             subtitle: Some("Subtitle".to_string()),
-            blocks: vec![
-                Block::Bullets(Bullets {
-                    items: vec![BulletItem {
-                        text: "Item 1".to_string(),
-                        children: vec![],
-                    }],
-                }),
-            ],
+            blocks: vec![Block::Bullets(Bullets {
+                items: vec![BulletItem {
+                    text: "Item 1".to_string(),
+                    children: vec![],
+                }],
+            })],
         };
 
         let json = serde_json::to_string(&slide).unwrap();
