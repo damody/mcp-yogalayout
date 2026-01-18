@@ -1,5 +1,5 @@
 use crate::layout::review::Report;
-use crate::layout::LayoutOutput;
+use crate::layout::{LayoutOutput, MultiPageOutput};
 use std::path::Path;
 use thiserror::Error;
 
@@ -11,8 +11,15 @@ pub enum OutputError {
     Json(#[from] serde_json::Error),
 }
 
-/// 寫入 layout.json
+/// 寫入 layout.json（單頁格式）
 pub fn write_layout_json(output: &LayoutOutput, path: &Path) -> Result<(), OutputError> {
+    let json = serde_json::to_string_pretty(output)?;
+    std::fs::write(path, json)?;
+    Ok(())
+}
+
+/// 寫入 layout.json（多頁格式）
+pub fn write_multi_page_layout_json(output: &MultiPageOutput, path: &Path) -> Result<(), OutputError> {
     let json = serde_json::to_string_pretty(output)?;
     std::fs::write(path, json)?;
     Ok(())

@@ -1,8 +1,8 @@
-use crate::layout::compute::{compute_layout, ComputeError};
+use crate::layout::compute::{compute_layout, compute_multi_page_layout, ComputeError};
 use crate::layout::review::{review_layout, FallbackInfo};
 use crate::layout::templates::{auto_select_template, Density, Template};
 use crate::md::{parse_markdown_file, ParseError};
-use crate::output::{write_layout_json, write_report_json, OutputError};
+use crate::output::{write_layout_json, write_multi_page_layout_json, write_report_json, OutputError};
 use crate::paths::{ensure_dir_exists, ensure_file_exists, resolve_workspace_path, PathError};
 use crate::theme::{Theme, ThemeError};
 use rmcp::model::{
@@ -142,70 +142,84 @@ impl LayoutService {
         // 解析 Markdown
         let slide = parse_markdown_file(&markdown_path)?;
 
-        // 決定模板
-        let template = match input.options.template.as_str() {
-            "single_col" => Some(Template::SingleColumn),
-            "two_col" => Some(Template::TwoColumn),
-            _ => None, // auto
-        };
-
         // 決定密度
-        let mut density = match input.options.density.as_str() {
+        let density = match input.options.density.as_str() {
             "compact" => Density::Compact,
             _ => Density::Comfortable,
         };
 
-        // 計算佈局（可能需要多次嘗試以處理 fallback）
-        let mut fallbacks = vec![];
-        let mut current_template = template.unwrap_or_else(|| auto_select_template(&slide, &theme));
-
-        let (mut output, mut elements) =
-            compute_layout(&slide, &theme, Some(current_template), density)?;
-        let mut report = review_layout(&elements, &output.slide);
-
-        // 嘗試降級
-        if report.has_issues() && current_template == Template::TwoColumn {
-            fallbacks.push(FallbackInfo {
-                from: "two_col".to_string(),
-                to: "single_col".to_string(),
-                reason: "Content overflow detected".to_string(),
-            });
-            current_template = Template::SingleColumn;
-            let result = compute_layout(&slide, &theme, Some(current_template), density)?;
-            output = result.0;
-            elements = result.1;
-            report = review_layout(&elements, &output.slide);
-        }
-
-        if report.has_issues() && density == Density::Comfortable {
-            fallbacks.push(FallbackInfo {
-                from: "comfortable".to_string(),
-                to: "compact".to_string(),
-                reason: "Content overflow detected".to_string(),
-            });
-            density = Density::Compact;
-            let result = compute_layout(&slide, &theme, Some(current_template), density)?;
-            output = result.0;
-            elements = result.1;
-            report = review_layout(&elements, &output.slide);
-        }
-
-        report.fallbacks = fallbacks;
-
-        // 如果仍有問題，加入警告
-        if !report.overflow_elements.is_empty() {
-            report.warnings.push(
-                "Content still overflows after all fallbacks. Consider reducing text content."
-                    .to_string(),
-            );
-        }
-
-        // 寫入輸出檔案
         let layout_path = output_dir.join("layout.json");
         let report_path = output_dir.join("report.json");
 
-        write_layout_json(&output, &layout_path)?;
-        write_report_json(&report, &report_path)?;
+        // 根據 auto_paginate 選項決定使用哪種佈局
+        if input.options.auto_paginate {
+            // 多頁自動分頁模式
+            let multi_output = compute_multi_page_layout(&slide, &theme, density)?;
+
+            // 建立報告
+            let mut report = crate::layout::review::Report::new();
+            report.warnings.push(format!(
+                "Auto-paginated into {} page(s)",
+                multi_output.total_pages
+            ));
+
+            write_multi_page_layout_json(&multi_output, &layout_path)?;
+            write_report_json(&report, &report_path)?;
+        } else {
+            // 傳統單頁模式（帶 fallback）
+            let template = match input.options.template.as_str() {
+                "single_col" => Some(Template::SingleColumn),
+                "two_col" => Some(Template::TwoColumn),
+                _ => None,
+            };
+
+            let mut fallbacks = vec![];
+            let mut current_template = template.unwrap_or_else(|| auto_select_template(&slide, &theme));
+            let mut current_density = density;
+
+            let (mut output, mut elements) =
+                compute_layout(&slide, &theme, Some(current_template), current_density)?;
+            let mut report = review_layout(&elements, &output.slide);
+
+            // 嘗試降級
+            if report.has_issues() && current_template == Template::TwoColumn {
+                fallbacks.push(FallbackInfo {
+                    from: "two_col".to_string(),
+                    to: "single_col".to_string(),
+                    reason: "Content overflow detected".to_string(),
+                });
+                current_template = Template::SingleColumn;
+                let result = compute_layout(&slide, &theme, Some(current_template), current_density)?;
+                output = result.0;
+                elements = result.1;
+                report = review_layout(&elements, &output.slide);
+            }
+
+            if report.has_issues() && current_density == Density::Comfortable {
+                fallbacks.push(FallbackInfo {
+                    from: "comfortable".to_string(),
+                    to: "compact".to_string(),
+                    reason: "Content overflow detected".to_string(),
+                });
+                current_density = Density::Compact;
+                let result = compute_layout(&slide, &theme, Some(current_template), current_density)?;
+                output = result.0;
+                elements = result.1;
+                report = review_layout(&elements, &output.slide);
+            }
+
+            report.fallbacks = fallbacks;
+
+            if !report.overflow_elements.is_empty() {
+                report.warnings.push(
+                    "Content still overflows after all fallbacks. Consider using auto_paginate: true."
+                        .to_string(),
+                );
+            }
+
+            write_layout_json(&output, &layout_path)?;
+            write_report_json(&report, &report_path)?;
+        }
 
         // 回傳相對路徑
         Ok(ComputeSlideLayoutOutput {
@@ -272,6 +286,12 @@ pub struct LayoutOptions {
     pub allow_two_column: bool,
     #[serde(default)]
     pub debug_dump: bool,
+    /// 自動分頁（預設 true）
+    #[serde(default = "default_true")]
+    pub auto_paginate: bool,
+    /// 最大頁數限制（None = 無限）
+    #[serde(default)]
+    pub max_pages: Option<usize>,
 }
 
 fn default_template() -> String {
@@ -279,6 +299,9 @@ fn default_template() -> String {
 }
 fn default_density() -> String {
     "comfortable".to_string()
+}
+fn default_true() -> bool {
+    true
 }
 
 impl Default for LayoutOptions {
@@ -288,6 +311,8 @@ impl Default for LayoutOptions {
             density: default_density(),
             allow_two_column: true,
             debug_dump: false,
+            auto_paginate: true,
+            max_pages: None,
         }
     }
 }

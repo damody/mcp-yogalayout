@@ -21,15 +21,15 @@ pub enum Density {
 impl Density {
     pub fn gap_scale(&self) -> f32 {
         match self {
-            Density::Comfortable => 1.0,
-            Density::Compact => 0.6,
+            Density::Comfortable => 0.8,  // 減少預設間距
+            Density::Compact => 0.5,      // 更緊湊
         }
     }
 
     pub fn padding_scale(&self) -> f32 {
         match self {
-            Density::Comfortable => 1.0,
-            Density::Compact => 0.75,
+            Density::Comfortable => 0.75, // 減少預設邊距
+            Density::Compact => 0.6,      // 更緊湊
         }
     }
 }
@@ -193,7 +193,7 @@ pub fn build_two_column(
     let theme = tree.theme.clone();
     let padding = theme.get_spacing(&theme.policy.page_padding) * density.padding_scale();
     let gap = theme.get_spacing("lg") * density.gap_scale();
-    let col_gap = theme.get_spacing("xl") * density.gap_scale();
+    let col_gap = theme.get_spacing("lg") * density.gap_scale(); // 從 xl 改為 lg
     let split = theme.policy.two_col_split;
 
     // Header

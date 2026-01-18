@@ -1,4 +1,4 @@
-use mcp_yogalayout::layout::compute::compute_layout;
+use mcp_yogalayout::layout::compute::{compute_layout, compute_multi_page_layout};
 use mcp_yogalayout::layout::review::review_layout;
 use mcp_yogalayout::layout::templates::Density;
 use mcp_yogalayout::md::parse_markdown;
@@ -134,4 +134,86 @@ fn test_prd_example_slide() {
 
     let report = review_layout(&elements, &output.slide);
     println!("Report: {:?}", report);
+}
+
+#[test]
+fn test_multi_page_layout_long_content() {
+    // Long content that should span multiple pages
+    let md = r#"# Multi-Page Test
+> This content should be split across multiple slides
+
+## Section 1
+- Point 1
+- Point 2
+- Point 3
+- Point 4
+- Point 5
+
+## Section 2
+- Point A
+- Point B
+- Point C
+- Point D
+
+## Section 3
+<fig id="diagram1" ratio="4:3" kind="diagram" alt="Large diagram" />
+
+## Section 4
+| Col A | Col B | Col C | Col D |
+|-------|-------|-------|-------|
+| 1     | 2     | 3     | 4     |
+| 5     | 6     | 7     | 8     |
+| 9     | 10    | 11    | 12    |
+| 13    | 14    | 15    | 16    |
+
+## Section 5
+- More content here
+- And more
+- Even more
+
+## Section 6
+- Final points
+- Last one
+"#;
+
+    let slide = parse_markdown(md).expect("Failed to parse markdown");
+    let theme = load_test_theme();
+
+    let output = compute_multi_page_layout(&slide, &theme, Density::Comfortable)
+        .expect("Failed to compute multi-page layout");
+
+    println!("Multi-page output:");
+    println!("  Slide size: {}x{}", output.slide_size.w_pt, output.slide_size.h_pt);
+    println!("  Total pages: {}", output.total_pages);
+
+    for page in &output.pages {
+        println!("  Page {}: {} elements, used={:.1}pt, remaining={:.1}pt",
+            page.page_number,
+            page.elements.len(),
+            page.used_height_pt,
+            page.remaining_height_pt
+        );
+        for elem in &page.elements {
+            println!("    - {} ({}) @ y={:.1}", elem.id, elem.role, elem.bounding_box.y);
+        }
+    }
+
+    // Should have at least 2 pages for this content
+    assert!(output.total_pages >= 2, "Long content should span multiple pages, got {}", output.total_pages);
+
+    // First page should have title
+    assert!(output.pages[0].elements.iter().any(|e| e.id == "title"));
+
+    // All pages should have positive used height
+    // Note: Some pages may overflow if a single element (like a large figure) exceeds page height
+    for page in &output.pages {
+        assert!(page.used_height_pt > 0.0);
+    }
+
+    // Check that most pages fit within bounds (allow some to overflow for large figures)
+    let fitting_pages = output.pages.iter()
+        .filter(|p| p.used_height_pt <= output.slide_size.h_pt)
+        .count();
+    assert!(fitting_pages >= output.total_pages / 2,
+        "At least half the pages should fit within bounds");
 }

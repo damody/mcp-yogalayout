@@ -56,7 +56,7 @@ pub struct BoundingBox {
     pub h: f32,
 }
 
-/// 佈局輸出
+/// 佈局輸出（單頁，向後相容）
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LayoutOutput {
     pub slide: SlideSize,
@@ -67,6 +67,23 @@ pub struct LayoutOutput {
 pub struct SlideSize {
     pub w_pt: f32,
     pub h_pt: f32,
+}
+
+/// 多頁佈局輸出
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MultiPageOutput {
+    pub slide_size: SlideSize,
+    pub pages: Vec<PageLayout>,
+    pub total_pages: usize,
+}
+
+/// 單頁佈局
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PageLayout {
+    pub page_number: usize,
+    pub elements: Vec<LayoutElement>,
+    pub used_height_pt: f32,
+    pub remaining_height_pt: f32,
 }
 
 /// 量測結果
