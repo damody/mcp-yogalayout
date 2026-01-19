@@ -2,6 +2,35 @@ use super::MeasuredSize;
 use crate::ast::{AspectRatio, BulletItem, Bullets, Table};
 use crate::theme::{Theme, Typography};
 
+/// 判斷字元是否為 CJK（中日韓）字元
+fn is_cjk_char(c: char) -> bool {
+    matches!(c,
+        '\u{4E00}'..='\u{9FFF}' |   // CJK Unified Ideographs
+        '\u{3400}'..='\u{4DBF}' |   // CJK Unified Ideographs Extension A
+        '\u{F900}'..='\u{FAFF}' |   // CJK Compatibility Ideographs
+        '\u{3000}'..='\u{303F}' |   // CJK Symbols and Punctuation
+        '\u{FF00}'..='\u{FFEF}' |   // Halfwidth and Fullwidth Forms
+        '\u{3040}'..='\u{309F}' |   // Hiragana
+        '\u{30A0}'..='\u{30FF}' |   // Katakana
+        '\u{AC00}'..='\u{D7AF}'     // Hangul Syllables
+    )
+}
+
+/// 計算文字的平均字元寬度（考慮 CJK 字元）
+fn estimate_avg_char_width(text: &str, font_size: f32) -> f32 {
+    let total_chars = text.chars().count();
+    if total_chars == 0 {
+        return font_size * 0.55;
+    }
+
+    let cjk_count = text.chars().filter(|&c| is_cjk_char(c)).count();
+    let cjk_ratio = cjk_count as f32 / total_chars as f32;
+
+    // 英文字寬約 0.55，CJK 字寬約 0.95（全形）
+    let avg_ratio = 0.55 * (1.0 - cjk_ratio) + 0.95 * cjk_ratio;
+    font_size * avg_ratio
+}
+
 /// 量測文字高度（使用簡化估算）
 pub fn measure_text(text: &str, role: &str, max_width_pt: f32, theme: &Theme) -> MeasuredSize {
     let typography = theme.get_typography(role).unwrap_or_else(|| {
@@ -12,8 +41,8 @@ pub fn measure_text(text: &str, role: &str, max_width_pt: f32, theme: &Theme) ->
 
     let line_height_pt = typography.size_pt * typography.line_height;
 
-    // 估算平均字元寬度（中英混排用保守值）
-    let avg_char_width = typography.size_pt * 0.55;
+    // 估算平均字元寬度（根據 CJK 比例動態調整）
+    let avg_char_width = estimate_avg_char_width(text, typography.size_pt);
 
     // 計算每行可容納的字元數
     let chars_per_line = (max_width_pt / avg_char_width).floor().max(1.0) as usize;
@@ -58,7 +87,7 @@ pub fn measure_bullets(
     let line_height_pt = typography.size_pt * typography.line_height;
     let item_spacing = theme.get_spacing("sm");
 
-    fn measure_items(
+    fn measure_items_inner(
         items: &[BulletItem],
         width: f32,
         typography: &Typography,
@@ -69,15 +98,16 @@ pub fn measure_bullets(
     ) -> f32 {
         let mut height = 0.0;
         let available_width = width - (depth as f32 * indent_pt);
-        let avg_char_width = typography.size_pt * 0.55;
-        let chars_per_line = (available_width / avg_char_width).floor().max(1.0) as usize;
 
         for (i, item) in items.iter().enumerate() {
+            // 使用 CJK 感知的字寬計算
+            let avg_char_width = estimate_avg_char_width(&item.text, typography.size_pt);
+            let chars_per_line = (available_width / avg_char_width).floor().max(1.0) as usize;
             let lines = estimate_lines(&item.text, chars_per_line);
             height += lines as f32 * line_height_pt;
 
             if !item.children.is_empty() {
-                height += measure_items(
+                height += measure_items_inner(
                     &item.children,
                     width,
                     typography,
@@ -95,7 +125,7 @@ pub fn measure_bullets(
         height
     }
 
-    let total_height = measure_items(
+    let total_height = measure_items_inner(
         &bullets.items,
         max_width_pt,
         typography,
@@ -123,24 +153,29 @@ pub fn measure_table(table: &Table, max_width_pt: f32, theme: &Theme) -> Measure
     let col_count = table.header.len().max(1);
     let col_width = (max_width_pt - cell_padding * 2.0 * col_count as f32) / col_count as f32;
 
-    let avg_char_width = typography.size_pt * 0.55;
-    let chars_per_cell = (col_width / avg_char_width).floor().max(1.0) as usize;
-
-    // 計算 header 高度
+    // 計算 header 高度（使用 CJK 感知字寬）
     let header_max_lines = table
         .header
         .iter()
-        .map(|cell| estimate_lines(cell, chars_per_cell))
+        .map(|cell| {
+            let avg_char_width = estimate_avg_char_width(cell, typography.size_pt);
+            let chars_per_cell = (col_width / avg_char_width).floor().max(1.0) as usize;
+            estimate_lines(cell, chars_per_cell)
+        })
         .max()
         .unwrap_or(1);
     let header_height = header_max_lines as f32 * line_height_pt + cell_padding * 2.0;
 
-    // 計算 rows 高度
+    // 計算 rows 高度（使用 CJK 感知字寬）
     let mut rows_height = 0.0;
     for row in &table.rows {
         let row_max_lines = row
             .iter()
-            .map(|cell| estimate_lines(cell, chars_per_cell))
+            .map(|cell| {
+                let avg_char_width = estimate_avg_char_width(cell, typography.size_pt);
+                let chars_per_cell = (col_width / avg_char_width).floor().max(1.0) as usize;
+                estimate_lines(cell, chars_per_cell)
+            })
             .max()
             .unwrap_or(1);
         rows_height += row_max_lines as f32 * line_height_pt + cell_padding * 2.0 + row_padding;
@@ -152,16 +187,68 @@ pub fn measure_table(table: &Table, max_width_pt: f32, theme: &Theme) -> Measure
     }
 }
 
-/// 量測圖片/示意圖高度（依據長寬比）
+/// 圖片尺寸限制
+pub struct FigureConstraints {
+    pub min_width: f32,
+    pub min_height: f32,
+    pub max_height: f32,
+    pub width_ratio: f32,  // 佔可用寬度的比例 (0.0-1.0)
+}
+
+impl Default for FigureConstraints {
+    fn default() -> Self {
+        Self {
+            min_width: 180.0,
+            min_height: 80.0,
+            max_height: 180.0,
+            width_ratio: 0.6,
+        }
+    }
+}
+
+/// 量測圖片/示意圖高度（依據長寬比，有最大高度限制）
 pub fn measure_figure(
+    ratio: &AspectRatio,
+    max_width_pt: f32,
+    constraints: &FigureConstraints,
+) -> MeasuredSize {
+    // 圖片寬度 = 可用寬度 × 寬度比例
+    let target_width = (max_width_pt * constraints.width_ratio).max(constraints.min_width);
+
+    // 根據比例計算高度
+    let natural_height = ratio.height_for_width(target_width);
+
+    // 套用高度限制
+    let height = natural_height
+        .max(constraints.min_height)
+        .min(constraints.max_height);
+
+    // 如果高度被限制，反推實際寬度
+    let final_width = if natural_height > constraints.max_height {
+        ratio.width_for_height(height).min(target_width)
+    } else {
+        target_width
+    };
+
+    MeasuredSize {
+        width: final_width,
+        height,
+    }
+}
+
+/// 舊版相容函數（使用 MinImageBox）
+pub fn measure_figure_legacy(
     ratio: &AspectRatio,
     max_width_pt: f32,
     min_box: &crate::theme::MinImageBox,
 ) -> MeasuredSize {
-    let width = max_width_pt.max(min_box.w);
-    let height = ratio.height_for_width(width).max(min_box.h);
-
-    MeasuredSize { width, height }
+    let constraints = FigureConstraints {
+        min_width: min_box.w,
+        min_height: min_box.h,
+        max_height: 180.0,
+        width_ratio: 0.6,
+    };
+    measure_figure(ratio, max_width_pt, &constraints)
 }
 
 #[cfg(test)]
@@ -205,6 +292,7 @@ mod tests {
                 page_padding: "xl".to_string(),
                 min_font_pt: 10.0,
                 min_image_box_pt: MinImageBox { w: 180.0, h: 120.0 },
+                figure_constraints: FigurePolicy::default(),
                 two_col_when: TwoColCondition {
                     has_image_or_diagram: true,
                     has_bullets_or_table: true,
@@ -235,10 +323,30 @@ mod tests {
     #[test]
     fn test_measure_figure_16_9() {
         let ratio = AspectRatio::new(16, 9);
-        let min_box = crate::theme::MinImageBox { w: 180.0, h: 120.0 };
-        let result = measure_figure(&ratio, 320.0, &min_box);
+        let constraints = FigureConstraints {
+            min_width: 180.0,
+            min_height: 80.0,
+            max_height: 300.0,  // 足夠大，不會限制
+            width_ratio: 1.0,   // 使用全寬
+        };
+        let result = measure_figure(&ratio, 320.0, &constraints);
         assert_eq!(result.width, 320.0);
         assert!((result.height - 180.0).abs() < 0.1);
+    }
+
+    #[test]
+    fn test_measure_figure_with_max_height() {
+        let ratio = AspectRatio::new(3, 1);  // 寬 3:1
+        let constraints = FigureConstraints {
+            min_width: 100.0,
+            min_height: 50.0,
+            max_height: 150.0,
+            width_ratio: 0.6,
+        };
+        // 924pt * 0.6 = 554.4pt 寬，3:1 比例 → 184.8pt 高
+        // 但 max_height = 150，所以高度被限制
+        let result = measure_figure(&ratio, 924.0, &constraints);
+        assert!(result.height <= 150.0);
     }
 
     #[test]

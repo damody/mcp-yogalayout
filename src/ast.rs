@@ -85,6 +85,11 @@ impl AspectRatio {
         width * (self.h as f32) / (self.w as f32)
     }
 
+    /// 給定高度，計算對應寬度
+    pub fn width_for_height(&self, height: f32) -> f32 {
+        height * (self.w as f32) / (self.h as f32)
+    }
+
     /// 從字串解析 (e.g., "16:9")
     pub fn parse(s: &str) -> Option<Self> {
         let parts: Vec<&str> = s.split(':').collect();

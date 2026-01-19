@@ -1,4 +1,4 @@
-use super::measure;
+use super::measure::{self, FigureConstraints};
 use super::templates::{self, Density, Template};
 use super::tree::LayoutTree;
 use super::{BoundingBox, ElementKind, LayoutElement, LayoutOutput, MultiPageOutput, PageLayout, SlideConfig, SlideSize};
@@ -169,6 +169,17 @@ pub fn compute_multi_page_layout(
     })
 }
 
+/// 從 theme 建立 FigureConstraints
+fn get_figure_constraints(theme: &Theme) -> FigureConstraints {
+    let policy = theme.get_figure_policy();
+    FigureConstraints {
+        min_width: policy.min_width_pt,
+        min_height: policy.min_height_pt,
+        max_height: policy.max_height_pt,
+        width_ratio: policy.width_ratio,
+    }
+}
+
 /// 量測區塊高度
 fn measure_block(block: &Block, max_width: f32, theme: &Theme, indent_pt: f32, gap: f32) -> f32 {
     match block {
@@ -187,7 +198,8 @@ fn measure_block(block: &Block, max_width: f32, theme: &Theme, indent_pt: f32, g
             measure::measure_table(table, max_width, theme).height
         }
         Block::Figure(fig) => {
-            measure::measure_figure(&fig.ratio, max_width, &theme.policy.min_image_box_pt).height
+            let constraints = get_figure_constraints(theme);
+            measure::measure_figure(&fig.ratio, max_width, &constraints).height
         }
         Block::Callout(callout) => {
             measure::measure_text(&callout.text, "caption", max_width, theme).height
@@ -270,16 +282,19 @@ fn layout_block(
             });
         }
         Block::Figure(fig) => {
-            let height = measure::measure_figure(&fig.ratio, available_width, &theme.policy.min_image_box_pt).height;
+            let constraints = get_figure_constraints(theme);
+            let measured = measure::measure_figure(&fig.ratio, available_width, &constraints);
+            // 圖片置中
+            let x_offset = (available_width - measured.width) / 2.0;
             elements.push(LayoutElement {
                 id: format!("fig:{}", fig.id),
                 kind: ElementKind::Figure,
                 role: "body".to_string(),
                 bounding_box: BoundingBox {
-                    x: padding,
+                    x: padding + x_offset,
                     y,
-                    w: available_width,
-                    h: height,
+                    w: measured.width,
+                    h: measured.height,
                 },
                 ratio: Some(format!("{}:{}", fig.ratio.w, fig.ratio.h)),
                 alt: Some(fig.alt.clone()),
@@ -383,6 +398,7 @@ mod tests {
                 page_padding: "xl".to_string(),
                 min_font_pt: 10.0,
                 min_image_box_pt: MinImageBox { w: 180.0, h: 120.0 },
+                figure_constraints: FigurePolicy::default(),
                 two_col_when: TwoColCondition {
                     has_image_or_diagram: true,
                     has_bullets_or_table: true,

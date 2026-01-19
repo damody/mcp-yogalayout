@@ -275,8 +275,14 @@ fn measure_node(
             }
         }
         NodeContext::Figure { ratio, .. } => {
-            let min_box = &theme.policy.min_image_box_pt;
-            let measured = super::measure::measure_figure(ratio, max_width, min_box);
+            let policy = theme.get_figure_policy();
+            let constraints = super::measure::FigureConstraints {
+                min_width: policy.min_width_pt,
+                min_height: policy.min_height_pt,
+                max_height: policy.max_height_pt,
+                width_ratio: policy.width_ratio,
+            };
+            let measured = super::measure::measure_figure(ratio, max_width, &constraints);
             Size {
                 width: measured.width,
                 height: measured.height,
@@ -343,6 +349,7 @@ mod tests {
                 page_padding: "xl".to_string(),
                 min_font_pt: 10.0,
                 min_image_box_pt: MinImageBox { w: 180.0, h: 120.0 },
+                figure_constraints: FigurePolicy::default(),
                 two_col_when: TwoColCondition {
                     has_image_or_diagram: true,
                     has_bullets_or_table: true,

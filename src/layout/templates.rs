@@ -523,6 +523,7 @@ mod tests {
                 page_padding: "xl".to_string(),
                 min_font_pt: 10.0,
                 min_image_box_pt: MinImageBox { w: 180.0, h: 120.0 },
+                figure_constraints: FigurePolicy::default(),
                 two_col_when: TwoColCondition {
                     has_image_or_diagram: true,
                     has_bullets_or_table: true,

@@ -12,6 +12,12 @@
     "page_padding": "xl",
     "min_font_pt": 10,
     "min_image_box_pt": { "w": 180, "h": 120 },
+    "figure_constraints": {
+      "min_width_pt": 200,
+      "min_height_pt": 80,
+      "max_height_pt": 160,
+      "width_ratio": 0.55
+    },
     "two_col_when": { "has_image_or_diagram": true, "has_bullets_or_table": true },
     "two_col_split": [0.58, 0.42]
   }

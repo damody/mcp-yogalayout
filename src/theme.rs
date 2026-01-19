@@ -33,8 +33,42 @@ pub struct LayoutPolicy {
     pub page_padding: String,
     pub min_font_pt: f32,
     pub min_image_box_pt: MinImageBox,
+    #[serde(default)]
+    pub figure_constraints: FigurePolicy,
     pub two_col_when: TwoColCondition,
     pub two_col_split: [f32; 2],
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FigurePolicy {
+    /// 圖片最小寬度 (pt)
+    #[serde(default = "default_figure_min_width")]
+    pub min_width_pt: f32,
+    /// 圖片最小高度 (pt)
+    #[serde(default = "default_figure_min_height")]
+    pub min_height_pt: f32,
+    /// 圖片最大高度 (pt)
+    #[serde(default = "default_figure_max_height")]
+    pub max_height_pt: f32,
+    /// 圖片佔可用寬度的比例 (0.0-1.0)
+    #[serde(default = "default_figure_width_ratio")]
+    pub width_ratio: f32,
+}
+
+fn default_figure_min_width() -> f32 { 180.0 }
+fn default_figure_min_height() -> f32 { 80.0 }
+fn default_figure_max_height() -> f32 { 180.0 }
+fn default_figure_width_ratio() -> f32 { 0.6 }
+
+impl Default for FigurePolicy {
+    fn default() -> Self {
+        Self {
+            min_width_pt: default_figure_min_width(),
+            min_height_pt: default_figure_min_height(),
+            max_height_pt: default_figure_max_height(),
+            width_ratio: default_figure_width_ratio(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -69,6 +103,11 @@ impl Theme {
             "2xl" => self.spacing_pt.xxl,
             _ => self.spacing_pt.md,
         }
+    }
+
+    /// 取得圖片尺寸限制
+    pub fn get_figure_policy(&self) -> &FigurePolicy {
+        &self.policy.figure_constraints
     }
 }
 
