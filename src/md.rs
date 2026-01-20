@@ -153,7 +153,12 @@ struct ParseState {
 
 impl ParseState {
     fn add_block(&mut self, block: Block) {
-        if let Some(ref mut section) = self.current_section {
+        // 圖片總是作為頂層區塊，這樣分頁演算法可以獨立處理圖片
+        if matches!(&block, Block::Figure(_)) {
+            // 先結束當前 section，再加入圖片
+            self.finish_current_section();
+            self.blocks.push(block);
+        } else if let Some(ref mut section) = self.current_section {
             section.children.push(block);
         } else {
             self.blocks.push(block);
@@ -361,17 +366,23 @@ mod tests {
 
 <fig id="flow" ratio="16:9" kind="diagram" alt="Flow diagram" />"#;
         let slide = parse_markdown(md).unwrap();
+        // 圖片現在是頂層區塊，不再嵌套在 section 內
+        assert_eq!(slide.blocks.len(), 2);
+        // blocks[0] = Section("Diagram") with empty children
         if let Block::Section(sec) = &slide.blocks[0] {
-            if let Block::Figure(fig) = &sec.children[0] {
-                assert_eq!(fig.id, "flow");
-                assert_eq!(fig.ratio.w, 16);
-                assert_eq!(fig.ratio.h, 9);
-                assert_eq!(fig.alt, "Flow diagram");
-            } else {
-                panic!("Expected Figure");
-            }
+            assert_eq!(sec.heading, "Diagram");
+            assert!(sec.children.is_empty());
         } else {
             panic!("Expected Section");
+        }
+        // blocks[1] = Figure
+        if let Block::Figure(fig) = &slide.blocks[1] {
+            assert_eq!(fig.id, "flow");
+            assert_eq!(fig.ratio.w, 16);
+            assert_eq!(fig.ratio.h, 9);
+            assert_eq!(fig.alt, "Flow diagram");
+        } else {
+            panic!("Expected Figure");
         }
     }
 
@@ -461,6 +472,8 @@ mod tests {
             slide.subtitle,
             Some("目標：降低輸入延遲，並保留穩定幀率".to_string())
         );
-        assert_eq!(slide.blocks.len(), 3); // 3 sections
+        // 圖片現在是頂層區塊：
+        // [0] Section(KPI), [1] Section(核心機制), [2] Section(資料流示意), [3] Figure, [4] Callout
+        assert_eq!(slide.blocks.len(), 5);
     }
 }

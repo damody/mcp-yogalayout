@@ -1,4 +1,4 @@
-use crate::layout::compute::{compute_layout, compute_multi_page_layout, ComputeError};
+use crate::layout::compute::{compute_layout, compute_multi_page_layout, compute_one_page_dense_layout, ComputeError};
 use crate::layout::review::{review_layout, FallbackInfo};
 use crate::layout::templates::{auto_select_template, Density, Template};
 use crate::md::{parse_markdown_file, ParseError};
@@ -151,8 +151,17 @@ impl LayoutService {
         let layout_path = output_dir.join("layout.json");
         let report_path = output_dir.join("report.json");
 
-        // 根據 auto_paginate 選項決定使用哪種佈局
-        if input.options.auto_paginate {
+        // 根據模式決定使用哪種佈局
+        if input.options.template == "one_page" {
+            // 極致密集單頁模式
+            let multi_output = compute_one_page_dense_layout(&slide, &theme)?;
+
+            let mut report = crate::layout::review::Report::new();
+            report.warnings.push("One-page dense layout (1 page)".to_string());
+
+            write_multi_page_layout_json(&multi_output, &layout_path)?;
+            write_report_json(&report, &report_path)?;
+        } else if input.options.auto_paginate {
             // 多頁自動分頁模式
             let multi_output = compute_multi_page_layout(&slide, &theme, density)?;
 
@@ -295,7 +304,7 @@ pub struct LayoutOptions {
 }
 
 fn default_template() -> String {
-    "auto".to_string()
+    "one_page".to_string()  // 預設使用極致密集單頁模式
 }
 fn default_density() -> String {
     "comfortable".to_string()
